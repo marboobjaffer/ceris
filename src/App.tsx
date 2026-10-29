@@ -1179,23 +1179,18 @@ export function App() {
         <button
           type="button"
           onClick={toggleTheme}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          className={`px-6 py-3 rounded-full backdrop-blur-xl text-xs font-medium inline-flex items-center justify-center gap-3 border hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
+          className={`w-12 h-12 rounded-full aspect-square backdrop-blur-xl inline-flex items-center justify-center border hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shrink-0 ${
             theme === 'dark'
               ? 'bg-white/[0.08] border-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.42),inset_0_-2px_6px_rgba(255,255,255,0.12),0_8px_24px_rgba(0,0,0,0.38)] text-[#F4F3EF] hover:bg-white/[0.15] hover:border-white/40'
               : 'bg-white/65 border-black/15 shadow-[inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-2px_6px_rgba(18,18,21,0.06),0_8px_24px_rgba(18,18,21,0.12)] text-[#121215] hover:bg-white/85 hover:border-black/25'
           }`}
         >
           {theme === 'dark' ? (
-            <>
-              <Sun className="w-3.5 h-3.5 text-amber-200" />
-              <span>Light Mode</span>
-            </>
+            <Sun className="w-4 h-4 text-amber-200" />
           ) : (
-            <>
-              <Moon className="w-3.5 h-3.5 text-zinc-800" />
-              <span>Dark Mode</span>
-            </>
+            <Moon className="w-4 h-4 text-zinc-800" />
           )}
         </button>
       </div>
