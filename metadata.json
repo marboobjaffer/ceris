@@ -1,0 +1,6 @@
+{
+  "name": "Rust & Raven — Gothic Couture & Dresses",
+  "description": "Minimalist luxury gothic fashion house offering architectural black velvet, French Chantilly lace, and liquid silk dresses online.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
