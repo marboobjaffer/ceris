@@ -33,7 +33,7 @@ export const Dock: React.FC<DockProps> = ({
             initial={{ y: -60, opacity: 0, scale: 0.92 }}
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: -60, opacity: 0, scale: 0.92 }}
-            transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+            transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
             className={`pointer-events-auto flex items-center rounded-full px-2 py-1 backdrop-blur-2xl transition-colors duration-300 ${
               isLight
                 ? 'bg-white/35 border border-black/15 shadow-[inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-2px_6px_rgba(18,18,21,0.05),0_12px_32px_rgba(18,18,21,0.12)]'

@@ -37,7 +37,7 @@ const smoothstep = (e0: number, e1: number, x: number) => {
 export const GlimmerWrap: React.FC<GlimmerWrapProps> = ({
   className = '',
   count = 420,
-  speed = 1,
+  speed = 0.65,
   glintIntensity = 1,
   overlapLanding = true,
   theme = 'dark',
@@ -65,12 +65,12 @@ export const GlimmerWrap: React.FC<GlimmerWrapProps> = ({
       const vh = window.innerHeight || 1;
       if (overlapLanding) {
         // When overlapping the pinned landing page, begin sliding in from the right
-        // the moment the sticky stage locks at top = 0 (rect.top <= 0)
+        // the moment the sticky stage locks at top = 0 (rect.top <= 0) over a longer, slower scroll span
         const scrolled = -rect.top;
-        const totalTravel = vh * 1.05;
+        const totalTravel = vh * 2.15;
         return clamp(scrolled / totalTravel, 0, 1);
       }
-      const totalTravel = vh * 1.05;
+      const totalTravel = vh * 2.15;
       const scrolled = vh - rect.top;
       return clamp(scrolled / totalTravel, 0, 1);
     };
@@ -88,8 +88,8 @@ export const GlimmerWrap: React.FC<GlimmerWrapProps> = ({
     };
 
     const tick = () => {
-      currentProgress += (targetProgress - currentProgress) * 0.14;
-      if (Math.abs(targetProgress - currentProgress) < 0.0005) {
+      currentProgress += (targetProgress - currentProgress) * 0.045;
+      if (Math.abs(targetProgress - currentProgress) < 0.0003) {
         currentProgress = targetProgress;
         isAnimating = false;
       }
@@ -416,7 +416,7 @@ export const GlimmerWrap: React.FC<GlimmerWrapProps> = ({
       ref={trackRef}
       data-glimmer-track="true"
       className={`relative w-full ${
-        overlapLanding ? 'h-[310vh] -mt-[210vh]' : 'h-[220vh]'
+        overlapLanding ? 'h-[450vh] -mt-[290vh]' : 'h-[280vh]'
       } z-20 pointer-events-none select-none ${className}`}
     >
       <div className="sticky top-0 w-full h-screen overflow-hidden">

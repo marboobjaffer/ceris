@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useScroll } from 'framer-motion';
+import { LinePath } from './ui/svg-follow-scroll';
 
 const clamp = (v: number, a: number, b: number) => (v < a ? a : v > b ? b : v);
 
@@ -19,13 +21,17 @@ export interface ScrollExpandProps extends React.HTMLAttributes<HTMLDivElement> 
   startRadius?: number;
   endRadius?: number;
   mediaZoom?: number;
+  mediaXOffset?: number;
   scrollDistance?: number;
   holdDistance?: number;
   smoothing?: number;
   overlayScrim?: number;
   useWindowScroll?: boolean;
   enabled?: boolean;
+  showFollowRope?: boolean;
+  onProgressChange?: (progress: number) => void;
   children?: React.ReactNode;
+  sidePanel?: React.ReactNode;
 }
 
 const ScrollExpand: React.FC<ScrollExpandProps> = ({
@@ -40,13 +46,17 @@ const ScrollExpand: React.FC<ScrollExpandProps> = ({
   startRadius = 24,
   endRadius = 0,
   mediaZoom = 1.35,
+  mediaXOffset = 0,
   scrollDistance = 1.2,
   holdDistance = 0.35,
   smoothing = 0.1,
   overlayScrim = 0.45,
   useWindowScroll = false,
   enabled = true,
+  showFollowRope = false,
+  onProgressChange,
   children,
+  sidePanel,
   className = '',
   style,
   ...rest
@@ -58,9 +68,15 @@ const ScrollExpand: React.FC<ScrollExpandProps> = ({
   const mediaRef = useRef<HTMLImageElement | HTMLVideoElement | null>(null);
   const titleRef = useRef<HTMLDivElement | null>(null);
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const sidePanelRef = useRef<HTMLDivElement | null>(null);
   const scrimRef = useRef<HTMLDivElement | null>(null);
   const hintRef = useRef<HTMLDivElement | null>(null);
   const [imgError, setImgError] = useState(false);
+
+  const { scrollYProgress } = useScroll({
+    target: trackRef,
+    offset: ['start start', 'end end'],
+  });
 
   const propsRef = useRef({
     startWidth,
@@ -68,12 +84,15 @@ const ScrollExpand: React.FC<ScrollExpandProps> = ({
     startRadius,
     endRadius,
     mediaZoom,
+    mediaXOffset,
     scrollDistance,
     holdDistance,
     smoothing,
     overlayScrim,
     useWindowScroll,
     enabled,
+    hasSidePanel: Boolean(sidePanel),
+    onProgressChange,
   });
 
   propsRef.current = {
@@ -82,12 +101,15 @@ const ScrollExpand: React.FC<ScrollExpandProps> = ({
     startRadius,
     endRadius,
     mediaZoom,
+    mediaXOffset,
     scrollDistance,
     holdDistance,
     smoothing,
     overlayScrim,
     useWindowScroll,
     enabled,
+    hasSidePanel: Boolean(sidePanel),
+    onProgressChange,
   };
 
   const applyProgress = useCallback((p: number) => {
@@ -96,35 +118,57 @@ const ScrollExpand: React.FC<ScrollExpandProps> = ({
     if (!frame || !media) return;
     const c = propsRef.current;
 
-    const e = smoothstep(0, 1, p);
+    c.onProgressChange?.(p);
 
-    const w = c.startWidth + (100 - c.startWidth) * e;
-    const h = c.startHeight + (100 - c.startHeight) * e;
+    const expandE = smoothstep(0, 0.42, p);
+
+    const w = c.startWidth + (100 - c.startWidth) * expandE;
+    const h = c.startHeight + (100 - c.startHeight) * expandE;
     const ix = Math.max(0, (100 - w) / 2);
     const iy = Math.max(0, (100 - h) / 2);
-    const r = c.startRadius + (c.endRadius - c.startRadius) * e;
-    frame.style.clipPath = `inset(${iy}% ${ix}% ${iy}% ${ix}% round ${r}px)`;
+    const r = c.startRadius + (c.endRadius - c.startRadius) * expandE;
+    if (c.startWidth < 100 || c.startHeight < 100 || c.startRadius > 0) {
+      frame.style.clipPath = `inset(${iy}% ${ix}% ${iy}% ${ix}% round ${r}px)`;
+    } else {
+      frame.style.clipPath = 'none';
+    }
 
-    media.style.transform = `scale(${c.mediaZoom + (1 - c.mediaZoom) * e})`;
+    const xTrans = c.mediaXOffset ? ` translate3d(${c.mediaXOffset}%, 0, 0)` : '';
+    media.style.transform = `scale(${c.mediaZoom * (1 + 0.04 * expandE)})${xTrans}`;
 
-    if (scrimRef.current) scrimRef.current.style.opacity = `${c.overlayScrim * e}`;
+    if (scrimRef.current) scrimRef.current.style.opacity = `${c.overlayScrim}`;
 
     if (titleRef.current) {
-      const out = smoothstep(0.4, 0.88, p);
+      const out = smoothstep(0.18, 0.48, p);
       titleRef.current.style.opacity = `${1 - out}`;
       titleRef.current.style.transform = `translate3d(0, ${-28 * out}px, 0) scale(${1 + 0.06 * out})`;
     }
 
     if (hintRef.current) {
-      const gone = smoothstep(0, 0.12, p);
+      const gone = smoothstep(0, 0.15, p);
       hintRef.current.style.opacity = `${1 - gone}`;
       hintRef.current.style.transform = `translate3d(0, ${8 * gone}px, 0)`;
     }
 
     if (overlayRef.current) {
-      const inn = smoothstep(0.68, 1, p);
-      overlayRef.current.style.opacity = `${inn}`;
-      overlayRef.current.style.transform = `translate3d(0, ${18 * (1 - inn)}px, 0)`;
+      if (c.hasSidePanel) {
+        const out = smoothstep(0.1, 0.75, p);
+        const op = Math.max(0, 1 - out);
+        overlayRef.current.style.opacity = `${op}`;
+        overlayRef.current.style.transform = `translate3d(${-40 * out}px, 0, 0)`;
+        overlayRef.current.style.pointerEvents = op > 0.2 ? 'auto' : 'none';
+      } else {
+        overlayRef.current.style.opacity = '1';
+        overlayRef.current.style.transform = 'translate3d(0, 0, 0)';
+        overlayRef.current.style.pointerEvents = 'auto';
+      }
+    }
+
+    if (sidePanelRef.current) {
+      const slideIn = smoothstep(0.05, 0.85, p);
+      sidePanelRef.current.style.transform = `translate3d(${(1 - slideIn) * 100}%, 0, 0)`;
+      sidePanelRef.current.style.opacity = `${slideIn > 0.01 ? 1 : 0}`;
+      sidePanelRef.current.style.pointerEvents = slideIn > 0.2 ? 'auto' : 'none';
     }
   }, []);
 
@@ -241,27 +285,51 @@ const ScrollExpand: React.FC<ScrollExpandProps> = ({
         onError={() => setImgError(true)}
       />
     ) : (
-      <div
-        ref={mediaRef as unknown as React.RefObject<HTMLDivElement>}
-        className="scroll-expand__media bg-gradient-to-br from-[#1A181B] via-[#111113] to-[#261618] flex items-center justify-center"
+      <img
+        ref={mediaRef as React.RefObject<HTMLImageElement>}
+        className="scroll-expand__media opacity-0 pointer-events-none"
+        src="data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs="
+        alt={alt}
       />
     );
 
   return (
     <div
       ref={rootRef}
-      className={`scroll-expand ${useWindowScroll ? '' : 'scroll-expand--scroller'} ${className}`.trim()}
+      className={`scroll-expand bg-black ${useWindowScroll ? '' : 'scroll-expand--scroller'} ${className}`.trim()}
       style={style}
       {...rest}
     >
-      <div ref={trackRef} className="scroll-expand__track">
-        <div ref={stageRef} className="scroll-expand__stage">
-          <div ref={frameRef} className="scroll-expand__frame">
+      <div ref={trackRef} className="scroll-expand__track bg-black">
+        <div ref={stageRef} className="scroll-expand__stage bg-black border-b border-white/15">
+          <div ref={frameRef} className="scroll-expand__frame bg-black">
             {media}
             <div ref={scrimRef} className="scroll-expand__scrim" />
+            {showFollowRope && (
+              <LinePath
+                scrollYProgress={scrollYProgress}
+                strokeColor="#FFFFFF"
+                strokeWidth={20}
+                className="pointer-events-none absolute inset-y-0 right-0 md:right-[2%] w-full md:w-[72%] h-full z-10"
+              />
+            )}
             {children ? (
-              <div ref={overlayRef} className="scroll-expand__overlay">
+              <div ref={overlayRef} className="scroll-expand__overlay z-20">
                 {children}
+              </div>
+            ) : null}
+            {sidePanel ? (
+              <div
+                ref={sidePanelRef}
+                className="absolute inset-0 z-30 flex flex-col justify-center bg-[#0B0B0C]/95 backdrop-blur-2xl overflow-hidden transition-opacity duration-700 ease-out"
+                style={{
+                  transform: 'translate3d(100%, 0, 0)',
+                  opacity: 0,
+                  pointerEvents: 'none',
+                  willChange: 'transform, opacity',
+                }}
+              >
+                {sidePanel}
               </div>
             ) : null}
           </div>

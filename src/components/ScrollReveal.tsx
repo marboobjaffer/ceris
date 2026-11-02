@@ -316,7 +316,7 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
               scrollTrigger: {
                 trigger: triggerEl,
                 scroller,
-                start: glimmerTrack ? 'top -15%' : 'top bottom',
+                start: glimmerTrack ? 'top -30%' : 'top bottom',
                 end: glimmerTrack
                   ? 'bottom bottom'
                   : clampToScroll(rotationEnd),
@@ -333,7 +333,7 @@ const ScrollReveal: React.FC<ScrollRevealProps> = ({
             trigger: triggerEl,
             scroller,
             start: glimmerTrack
-              ? 'top -15%'
+              ? 'top -30%'
               : () =>
                   `top bottom-=${0.2 * Math.min(el.offsetHeight, viewportHeight())}`,
             end: glimmerTrack

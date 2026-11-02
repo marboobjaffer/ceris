@@ -75,7 +75,7 @@ html.lenis body {
 .scroll-expand__frame {
   position: absolute;
   inset: 0;
-  clip-path: inset(21% 29% 21% 29% round 24px);
+  clip-path: none;
   will-change: clip-path;
 }
 
@@ -85,17 +85,25 @@ html.lenis body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 20%;
   will-change: transform;
-  transform-origin: center;
+  transform-origin: center 20%;
   user-select: none;
   -webkit-user-drag: none;
+  filter: contrast(1.06) brightness(1.04) saturate(1.02);
 }
 
 .scroll-expand__scrim {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(to top, rgba(11, 11, 12, 0.88), rgba(11, 11, 12, 0.25) 45%, rgba(11, 11, 12, 0.55));
+  background: linear-gradient(
+    90deg,
+    rgba(11, 11, 12, 0.82) 0%,
+    rgba(11, 11, 12, 0.45) 42%,
+    rgba(11, 11, 12, 0) 65%,
+    rgba(11, 11, 12, 0) 100%
+  );
   opacity: 0;
 }
 
@@ -104,9 +112,9 @@ html.lenis body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  text-align: center;
+  text-align: left;
   padding: 6%;
   opacity: 0;
   will-change: opacity, transform;
@@ -655,5 +663,95 @@ html[data-theme="light"] body {
   box-shadow: 0 2px 10px rgba(18, 18, 21, 0.12);
 }
 
+.jelly-radio--header-white,
+[data-theme="light"] .jelly-radio--header-white {
+  --jr-chip: #ffffff !important;
+  --jr-active: #ffffff !important;
+  --jr-text: #0b0b0c !important;
+  --jr-active-text: #0b0b0c !important;
+}
 
+.jelly-radio--header-white .jelly-radio__skin {
+  background: #ffffff !important;
+  color: #0b0b0c !important;
+  font-weight: 600;
+  box-shadow: 0 2px 14px rgba(255, 255, 255, 0.22);
+}
+
+[data-theme="light"] .jelly-radio--header-white .jelly-radio__skin {
+  box-shadow: 0 2px 10px rgba(18, 18, 21, 0.12);
+}
+
+/* ---- Habit FAQ Scroller Keyframes & Utilities ---- */
+:root {
+  --bg-start: #bdccff;
+  --bg-end: #ffffff;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scroll-horizontal {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes scroll-horizontal-reverse {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-scroll-horizontal {
+  animation: scroll-horizontal var(--scroll-duration, 40s) linear infinite;
+}
+
+.animate-scroll-horizontal-reverse {
+  animation: scroll-horizontal-reverse var(--scroll-duration, 40s) linear infinite;
+}
+
+.group:hover .animate-scroll-horizontal,
+.group:hover .animate-scroll-horizontal-reverse {
+  animation-play-state: paused;
+}
+
+.scroller-mask {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 8%,
+    black 92%,
+    transparent
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    black 8%,
+    black 92%,
+    transparent
+  );
+}
+
+[data-theme="light"] section#gothic-faq .text-\[\#F4F3EF\] {
+  color: #121215 !important;
+}
+
+[data-theme="light"] section#gothic-faq .text-zinc-400 {
+  color: #52525B !important;
+}
 

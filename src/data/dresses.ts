@@ -28,7 +28,7 @@ export interface DressProduct {
 }
 
 export const HERO_EDITORIAL_IMAGE =
-  '/src/assets/images/hero_goth_atelier_1793254543263.jpg';
+  '/src/assets/images/hero_goth_model_clear_1793456885505.jpg';
 
 export const DRESS_CATALOG: DressProduct[] = [
   {

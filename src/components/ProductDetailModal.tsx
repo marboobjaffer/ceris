@@ -88,10 +88,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Unboxed Metadata */}
               <div className="flex items-center gap-2 text-xs text-zinc-400 tracking-wide uppercase">
                 <span>{dress.category}</span>
-                <span aria-hidden="true">·</span>
-                <span>{dress.fabric}</span>
-                <span aria-hidden="true">·</span>
-                <span className="text-[#C87D7D]">{dress.availability}</span>
               </div>
 
               <h2
@@ -109,10 +105,6 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   Complimentary insured courier delivery included
                 </span>
               </div>
-
-              <p className="mt-5 text-sm text-zinc-300 leading-relaxed">
-                {dress.description}
-              </p>
 
               {/* Size Selector */}
               <div className="mt-7 pt-6 border-t border-white/10">
@@ -189,7 +181,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               {/* Construction Details */}
               <div className="mt-6 pt-6 border-t border-white/10">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 mb-3">
                   Garment Architecture
                 </h3>
                 <ul className="space-y-2 text-xs text-zinc-300">

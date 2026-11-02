@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { ShoppingBag, Search, Check, Sparkles, ArrowDown, SlidersHorizontal, Eye, Sun, Moon, Home, Ruler, Layers } from 'lucide-react';
+import { ShoppingBag, Search, Check, Sparkles, ArrowDown, SlidersHorizontal, Eye, Sun, Moon, Home, Ruler, Layers, ChevronDown } from 'lucide-react';
 import ScrollExpand from './components/ScrollExpand';
 import RotatingText from './components/RotatingText';
 import JellyRadio from './components/JellyRadio';
@@ -21,6 +21,10 @@ import {
 } from './data/dresses';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { CartDrawer, CartItem } from './components/CartDrawer';
+import { TiltCascadeCarousel, TiltCascadeItem } from './components/TiltCascadeCarousel';
+import { AnimatedThemeToggle } from './components/ui/animated-theme-toggle';
+import FaqSection, { FaqSectionData } from './components/ui/habit-faq-scroller';
+import { CanvasText } from './components/ui/canvas-text';
 
 const CATEGORIES: DressCategory[] = [
   'All',
@@ -31,6 +35,62 @@ const CATEGORIES: DressCategory[] = [
 ];
 
 const SIZES: DressSize[] = ['XS', 'S', 'M', 'L', 'XL'];
+
+const GOTHIC_FASHION_FAQ_DATA: FaqSectionData = {
+  mainTitle: 'FAQS',
+  rows: [
+    {
+      id: 'row1',
+      speed: '60s',
+      direction: 'left',
+      faqItems: [
+        {
+          id: 'q1',
+          question: 'Are the corset dresses comfortable to wear?',
+          answer:
+            'Yes. We use flexible steel boning that shapes your waist while letting you move and breathe comfortably.',
+        },
+        {
+          id: 'q2',
+          question: 'What fabrics do you use for your goth dresses?',
+          answer:
+            'All gowns are crafted from genuine French lace, soft crushed velvet, and heavyweight Italian silk.',
+        },
+        {
+          id: 'q3',
+          question: 'How do I choose the right dress size?',
+          answer:
+            'Pick your size based on your waist measurement. The back lacing lets you adjust the fit by up to 2 inches.',
+        },
+      ],
+    },
+    {
+      id: 'row2',
+      speed: '48s',
+      direction: 'right',
+      faqItems: [
+        {
+          id: 'q5',
+          question: 'How should I wash and care for my gown?',
+          answer:
+            'Dry clean only. To remove wrinkles, gently steam the dress from the inside—never iron velvet flat.',
+        },
+        {
+          id: 'q6',
+          question: 'Can I remove the silver chains before cleaning?',
+          answer:
+            'Yes, all silver shoulder chains unclip easily with small clasps so you can clean and store the dress safely.',
+        },
+        {
+          id: 'q7',
+          question: 'Can I exchange my dress if it doesn’t fit?',
+          answer:
+            'Yes, we offer free size exchanges and returns within 14 days on all unworn dresses.',
+        },
+      ],
+    },
+  ],
+};
 
 export function App() {
   // Light / Dark Mode state (defaults to dark mode, toggles between dark and light)
@@ -51,9 +111,53 @@ export function App() {
     if (!isLoading) return;
     const timer = setTimeout(() => {
       setIsLoading(false);
-    }, 2000);
+    }, 3200);
     return () => clearTimeout(timer);
   }, [isLoading]);
+
+  const [heroStayActive, setHeroStayActive] = useState(true);
+  const [heroScrollProgress, setHeroScrollProgress] = useState(0);
+
+  // 5-second Hero Landing Page stay limit timer -> Locks scrolling so hero section stays presented for 5s, matching the hanging dresses section duration
+  useEffect(() => {
+    if (isLoading) return;
+
+    setHeroStayActive(true);
+    if (lenisRef.current) {
+      lenisRef.current.stop();
+    }
+
+    const timer = setTimeout(() => {
+      setHeroStayActive(false);
+      if (lenisRef.current) {
+        lenisRef.current.start();
+        lenisRef.current.scrollTo(window.innerHeight * 0.95, { duration: 5.0 });
+      } else {
+        window.scrollTo({ top: window.innerHeight * 0.95, behavior: 'smooth' });
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
+  // Prevent scroll past top while hero stay is active
+  useEffect(() => {
+    if (!heroStayActive) return;
+
+    const preventScrollAtTop = (e: Event) => {
+      if (window.scrollY <= 15) {
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('wheel', preventScrollAtTop, { passive: false });
+    window.addEventListener('touchmove', preventScrollAtTop, { passive: false });
+
+    return () => {
+      window.removeEventListener('wheel', preventScrollAtTop);
+      window.removeEventListener('touchmove', preventScrollAtTop);
+    };
+  }, [heroStayActive]);
 
   // Cart state with 1 initial signature dress so the user can test checkout immediately or modify bag
   const [cartItems, setCartItems] = useState<CartItem[]>([
@@ -68,6 +172,7 @@ export function App() {
 
   // Filter, Search & Sort states
   const [selectedCategory, setSelectedCategory] = useState<DressCategory>('All');
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [activeNavSection, setActiveNavSection] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'featured' | 'price-asc' | 'price-desc'>('featured');
@@ -81,6 +186,16 @@ export function App() {
     'rr-05-carmilla-rust-brocade': 'M',
     'rr-06-monolith-draped-column': 'S',
   });
+
+  // Size dropdown menu open tracker per card
+  const [openSizeDropdownId, setOpenSizeDropdownId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openSizeDropdownId) return;
+    const handleClickOutside = () => setOpenSizeDropdownId(null);
+    window.addEventListener('click', handleClickOutside);
+    return () => window.removeEventListener('click', handleClickOutside);
+  }, [openSizeDropdownId]);
 
   // Quick-add feedback state per dress ID
   const [addedCardId, setAddedCardId] = useState<string | null>(null);
@@ -113,6 +228,15 @@ export function App() {
     setAppliedFitBanner(`Size ${recommendedSize} applied across all dresses in the catalog.`);
     setTimeout(() => setAppliedFitBanner(null), 3500);
   };
+
+  const tiltCascadeItems: TiltCascadeItem[] = useMemo(() => {
+    return DRESS_CATALOG.map((dress) => ({
+      title: dress.name,
+      caption: `${dress.subtitle} · $${dress.price.toLocaleString()}`,
+      src: dress.image,
+      alt: dress.name,
+    }));
+  }, []);
 
   const totalBagCount = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -262,6 +386,10 @@ export function App() {
   };
 
   const scrollToSection = (id: string) => {
+    setHeroStayActive(false);
+    if (lenisRef.current) {
+      lenisRef.current.start();
+    }
     setActiveNavSection(id);
     programmaticScrollRef.current = true;
     if (scrollTimeoutRef.current) {
@@ -281,7 +409,7 @@ export function App() {
   };
 
   useEffect(() => {
-    const sectionIds = ['collection', 'bespoke-fit', 'atelier-craft'];
+    const sectionIds = ['collection', 'gothic-faq'];
 
     const handleScroll = () => {
       const pastLandingThreshold = window.innerHeight * 1.15;
@@ -296,7 +424,7 @@ export function App() {
         document.documentElement.scrollHeight - 80;
 
       if (nearBottom) {
-        setActiveNavSection('atelier-craft');
+        setActiveNavSection('gothic-faq');
         return;
       }
 
@@ -328,7 +456,7 @@ export function App() {
       data-theme={theme}
       className="theme-root min-h-screen bg-[#0B0B0C] text-[#F4F3EF] flex flex-col transition-colors duration-300"
     >
-      {/* Full-Screen Black Loading Animation with White "RUST" and Dark Maroon Rectangle "& RAVEN" */}
+      {/* Full-Screen Black Loading Animation with Wensity CanvasText ("RUST & RAVEN") */}
       <AnimatePresence>
         {isLoading && (
           <motion.div
@@ -339,30 +467,27 @@ export function App() {
             onClick={() => setIsLoading(false)}
             className="fixed inset-0 z-50 bg-black flex items-center justify-center px-6 cursor-pointer select-none"
           >
-            <div className="flex items-center justify-center gap-3 sm:gap-4 text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight text-white">
-              <span className="text-white">RUST</span>
-              <RotatingText
-                texts={['& RAVEN']}
-                highlight={true}
-                highlightColor="#5A1218"
-                effect="slide"
-                direction="up"
-                animatePresenceInitial={true}
-                staggerDuration={0.035}
-                staggerFrom="first"
-                loop={false}
-                auto={false}
-                mainClassName="text-white font-bold"
-                style={{ color: '#ffffff' }}
-              />
-            </div>
+            <CanvasText
+              text="RUST & RAVEN"
+              color="#FFFFFF"
+              fontSize={68}
+              fontWeight={700}
+              particleSize={1.8}
+              density={2}
+              scatter={52}
+              loadDuration={1.0}
+              morphDuration={1.35}
+              drift={0.35}
+              magnetic={0.4}
+              className="h-56 w-full max-w-4xl"
+            />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Top Bar Contract — slides up and disappears once scrolled past the landing page */}
       <header
-        className={`fixed top-0 inset-x-0 z-40 flex items-center justify-between gap-8 px-6 md:px-12 py-4 bg-[#0B0B0C]/70 backdrop-blur-md border-b border-white/[0.08] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`fixed top-0 inset-x-0 z-40 flex items-center justify-between gap-8 px-6 md:px-12 py-4 bg-[#0B0B0C]/70 backdrop-blur-md border-b border-white/[0.08] transition-all duration-1000 ease-[cubic-bezier(0.22,1,0.36,1)] ${
           isPastLanding
             ? '-translate-y-full opacity-0 pointer-events-none'
             : 'translate-y-0 opacity-100'
@@ -382,28 +507,7 @@ export function App() {
           Rust &amp; Raven
         </a>
 
-        {/* Center Zone: Concise Single-Line Navigation Links with JellyRadio effect */}
-        <nav
-          aria-label="Primary Navigation"
-          className="hidden md:flex items-center"
-        >
-          <JellyRadio
-            ariaLabel="Primary Navigation"
-            size="sm"
-            chipColor="rgba(255, 255, 255, 0.06)"
-            items={[
-              { value: 'collection', label: 'Dresses' },
-              { value: 'bespoke-fit', label: 'Bespoke Sizing' },
-              { value: 'atelier-craft', label: 'Textiles' },
-            ]}
-            value={activeNavSection}
-            allowReselect={true}
-            onChange={(val) => {
-              setActiveNavSection(val);
-              scrollToSection(val);
-            }}
-          />
-        </nav>
+
 
         {/* Right Zone: Feature Button with SpecularButton Effect */}
         <div className="flex items-center shrink-0">
@@ -439,16 +543,10 @@ export function App() {
             onClick: () => scrollToSection('collection'),
           },
           {
-            id: 'bespoke-fit',
-            label: 'Bespoke Sizing',
-            active: activeNavSection === 'bespoke-fit',
-            onClick: () => scrollToSection('bespoke-fit'),
-          },
-          {
-            id: 'atelier-craft',
-            label: 'Textiles',
-            active: activeNavSection === 'atelier-craft',
-            onClick: () => scrollToSection('atelier-craft'),
+            id: 'gothic-faq',
+            label: 'FAQ',
+            active: activeNavSection === 'gothic-faq',
+            onClick: () => scrollToSection('gothic-faq'),
           },
         ]}
       />
@@ -461,70 +559,84 @@ export function App() {
             src={HERO_EDITORIAL_IMAGE}
             mediaType="image"
             alt="Rust & Raven Gothic Couture Gown in Basalt Hall"
-            title="Rust & Raven"
-            scrollHint="Scroll to expand · Autumn / Winter 2026"
-            startWidth={42}
-            startHeight={58}
-            startRadius={24}
+            title=""
+            scrollHint="Hero page stays 5s · Autumn / Winter 2026"
+            startWidth={100}
+            startHeight={100}
+            startRadius={0}
             endRadius={0}
-            mediaZoom={1.35}
-            scrollDistance={1.05}
-            holdDistance={1.45}
-            smoothing={0.1}
-            overlayScrim={0.55}
+            mediaZoom={1.05}
+            mediaXOffset={0}
+            scrollDistance={1.35}
+            holdDistance={3.5}
+            smoothing={0.28}
+            overlayScrim={0.35}
             useWindowScroll={true}
+            onProgressChange={setHeroScrollProgress}
+            sidePanel={
+              <TiltCascadeCarousel
+                items={tiltCascadeItems}
+                scrollProgress={Math.max(0, Math.min(1, (heroScrollProgress - 0.12) / 0.88))}
+                scrollDriven={true}
+                height="100%"
+                slideSize="clamp(220px, 35vw, 340px)"
+                background="#0B0B0C"
+                color="#F4F3EF"
+                autoplay={0}
+                loop={true}
+                onSelect={(item) => {
+                  const dress = DRESS_CATALOG.find((d) => d.name === item.title);
+                  if (dress) setActiveDressModal(dress);
+                }}
+              />
+            }
           >
-            {/* Minimal & Clean Hero Content revealed inside the expanded frame */}
-            <div className="max-w-2xl mx-auto px-6 flex flex-col items-center text-center">
-              <div className="flex items-center gap-2 text-xs tracking-widest uppercase text-zinc-300 mb-4">
-                <span>Autumn / Winter 2026</span>
-                <span aria-hidden="true">·</span>
-                <span>Milan &amp; Calais Atelier</span>
-              </div>
-
+            {/* Minimal & Clean Hero Content revealed on the left side while the gothic dress model is showcased on the right */}
+            <div className="w-full max-w-xl md:max-w-[46%] lg:max-w-xl mr-auto px-4 sm:px-6 flex flex-col items-start text-left">
               <h1
-                className="font-display text-4xl sm:text-5xl md:text-6xl font-normal text-[#F4F3EF] tracking-tight leading-[1.08]"
+                className="font-display text-3xl sm:text-4xl md:text-[2.75rem] font-bold text-[#F4F3EF] tracking-tight leading-[1.1] max-w-md"
                 style={{ textWrap: 'balance' }}
               >
-                Architectural Goth Dresses in Obsidian Silk &amp; Lace
+                Architectural Goth Dresses in Obsidian Silk
               </h1>
 
-              <p className="mt-5 text-sm md:text-base text-zinc-300 max-w-lg leading-relaxed">
-                Minimalist dark couture crafted from silk-backed crushed velvet, French Leavers lace, and spiral steel corsetry.
-              </p>
-
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4 pointer-events-auto">
+              <div className="mt-7 flex flex-nowrap items-center justify-start gap-3.5 pointer-events-auto">
                 <button
                   type="button"
                   onClick={() => scrollToSection('collection')}
-                  className="py-3 px-7 rounded-full bg-[#F4F3EF] text-[#0B0B0C] text-xs font-semibold tracking-wide hover:bg-white transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                  className="h-10 px-6 rounded-full bg-[#F4F3EF] text-[#0B0B0C] text-xs font-bold tracking-wide hover:bg-white transition-colors cursor-pointer whitespace-nowrap shrink-0 inline-flex items-center justify-center"
                 >
                   Shop Dresses
                 </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('bespoke-fit')}
-                  className="py-3 px-6 rounded-full backdrop-blur-xl bg-white/[0.08] border border-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.38),inset_0_-2px_6px_rgba(255,255,255,0.1),0_8px_24px_rgba(0,0,0,0.35)] text-xs font-medium text-[#F4F3EF] hover:bg-white/[0.15] hover:border-white/40 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0"
+                <SpecularButton
+                  size="sm"
+                  radius={999}
+                  blur={0}
+                  autoAnimate={true}
+                  speed={0.85}
+                  intensity={0.75}
+                  thickness={1.6}
+                  glow={0}
+                  tint="#18181B"
+                  tintOpacity={1}
+                  lineColor="#A1A1AA"
+                  baseColor="#27272A"
+                  textColor="#F4F3EF"
+                  onClick={() => scrollToSection('collection')}
+                  style={{
+                    height: '40px',
+                    padding: '0 22px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    boxShadow: 'none',
+                  }}
+                  className="text-xs font-bold tracking-wide whitespace-nowrap shrink-0"
                 >
                   Find Your Atelier Size
-                </button>
+                </SpecularButton>
               </div>
             </div>
           </ScrollExpand>
-
-          {/* GlimmerWrap Animation: sweeps in from the right side to cover the landing page with centered ScrollReveal quote before the Dresses section */}
-          <GlimmerWrap theme={theme}>
-            <ScrollReveal
-              baseOpacity={0.12}
-              enableBlur={true}
-              baseRotation={3}
-              blurStrength={5}
-              containerClassName="my-0 text-center mx-auto max-w-4xl"
-              textClassName="font-display text-[#F4F3EF] tracking-tight font-normal text-center !text-2xl sm:!text-3xl md:!text-4xl !leading-relaxed"
-            >
-              In the hush of midnight, we find our truest selves. Our designs are made for those who wear black like armor and beauty like rebellion. Every stitch, every shadow, every ruffle of lace is a reminder that you were never meant to blend in. Step into the dark, and let your style speak louder than the light.
-            </ScrollReveal>
-          </GlimmerWrap>
         </section>
 
         {/* Section 2: Featured Goth Dress Collection Grid */}
@@ -532,21 +644,59 @@ export function App() {
           id="collection"
           className="scroll-mt-20 max-w-[1280px] mx-auto px-6 md:px-12 py-20 md:py-24"
         >
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-10 border-b border-white/10">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider">
-                <span>01. Online Boutique</span>
-                <span aria-hidden="true">·</span>
-                <span>Ready-to-Wear &amp; Made-to-Measure</span>
-              </div>
-              <h2
-                className="font-display text-3xl md:text-4xl font-normal text-[#F4F3EF] mt-2"
-                style={{ textWrap: 'balance' }}
-              >
+          {/* Interactive Category Dropdown & Parallel Filter Bar */}
+          <div className="mb-6 relative flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsCategoryDropdownOpen((prev) => !prev)}
+              aria-expanded={isCategoryDropdownOpen}
+              className="py-2.5 px-5 rounded-full bg-[#18181B] border border-white/20 text-xs font-semibold text-[#F4F3EF] hover:bg-[#222226] hover:border-white/40 transition-all flex items-center gap-2.5 cursor-pointer shadow-lg z-10 shrink-0 active:scale-95"
+            >
+              <span>
+                {selectedCategory === 'All' ? 'All Dresses' : selectedCategory}
+              </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-zinc-300 transition-transform duration-300 ${
+                  isCategoryDropdownOpen ? 'rotate-180' : 'rotate-0'
+                }`}
+              />
+            </button>
+
+            {/* Parallel Categories Bar revealed on click parallel to All Dresses button */}
+            <AnimatePresence>
+              {isCategoryDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -16, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -16, scale: 0.95 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                  className="flex items-center gap-2 overflow-x-auto py-1"
+                >
+                  <JellyRadio
+                    ariaLabel="Dress Categories"
+                    size="md"
+                    items={CATEGORIES.map((category) => ({
+                      value: category,
+                      label: category === 'All' ? 'All Dresses' : category,
+                    }))}
+                    value={selectedCategory}
+                    onChange={(val) => {
+                      setSelectedCategory(val as DressCategory);
+                    }}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-10 border-b border-white/10">
+            <div className="shrink-0">
+              <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-normal text-[#F4F3EF] leading-tight whitespace-nowrap">
                 <ShinyText
                   color={theme === 'dark' ? '#b5b5b5' : '#52525b'}
                   shineColor={theme === 'dark' ? '#ffffff' : '#121215'}
                   speed={2}
+                  className="whitespace-nowrap"
                 >
                   Goth Dresses &amp; Evening Gowns
                 </ShinyText>
@@ -554,8 +704,8 @@ export function App() {
             </div>
 
             {/* Search & Sort Controls */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 shrink-0">
+              <div className="relative shrink-0">
                 <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="search"
@@ -567,7 +717,7 @@ export function App() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 bg-[#141417] border border-white/10 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 bg-[#141417] border border-white/10 rounded-lg px-3 py-2 shrink-0">
                 <SlidersHorizontal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                 <label htmlFor="sort-select" className="sr-only">
                   Sort dresses
@@ -592,20 +742,6 @@ export function App() {
                 </select>
               </div>
             </div>
-          </div>
-
-          {/* Interactive Category Filter Bar with JellyRadio effect */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <JellyRadio
-              ariaLabel="Dress Categories"
-              size="md"
-              items={CATEGORIES.map((category) => ({
-                value: category,
-                label: category === 'All' ? 'All Dresses' : category,
-              }))}
-              value={selectedCategory}
-              onChange={(val) => setSelectedCategory(val as DressCategory)}
-            />
           </div>
 
           {appliedFitBanner && (
@@ -642,7 +778,7 @@ export function App() {
               </button>
             </div>
           ) : (
-            <div className="mt-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8">
               {filteredDresses.map((dress) => {
                 const selectedSize = cardSizes[dress.id] || 'S';
                 const isJustAdded = addedCardId === dress.id;
@@ -651,13 +787,13 @@ export function App() {
                 return (
                   <article
                     key={dress.id}
-                    className="group bg-[#121215] border border-white/[0.08] rounded-xl overflow-hidden flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5 hover:border-white/20"
+                    className="group bg-[#121215] border border-white/[0.08] rounded-xl relative flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5 hover:border-white/20"
                   >
                     <div>
                       {/* 3:4 Product Image Container */}
                       <div
                         onClick={() => setActiveDressModal(dress)}
-                        className="relative aspect-[3/4] w-full bg-[#18181B] overflow-hidden cursor-pointer"
+                        className="relative aspect-[3/4] w-full bg-[#18181B] overflow-hidden rounded-t-xl cursor-pointer"
                       >
                         {!isImgBroken ? (
                           <img
@@ -690,12 +826,8 @@ export function App() {
 
                       {/* Card Body */}
                       <div className="p-6">
-                        {/* Unboxed Metadata with middot separators (Zero Pills) */}
-                        <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider">
-                          <span>{dress.category}</span>
-                          <span aria-hidden="true">·</span>
-                          <span className="truncate">{dress.fabric}</span>
-                          <span aria-hidden="true">·</span>
+                        {/* Unboxed Metadata (Zero Pills) */}
+                        <div className="flex items-center justify-end gap-2 text-xs text-zinc-400 uppercase tracking-wider">
                           <span className="text-[#C87D7D] shrink-0">
                             {dress.availability}
                           </span>
@@ -705,7 +837,7 @@ export function App() {
                         <div className="mt-2.5 flex items-baseline justify-between gap-4">
                           <h3
                             onClick={() => setActiveDressModal(dress)}
-                            className="text-base font-semibold text-[#F4F3EF] group-hover:text-white cursor-pointer leading-snug"
+                            className="text-lg sm:text-xl font-bold tracking-tight text-[#F4F3EF] group-hover:text-white cursor-pointer leading-snug"
                           >
                             {dress.name}
                           </h3>
@@ -713,46 +845,19 @@ export function App() {
                             ${dress.price.toLocaleString()}
                           </span>
                         </div>
-
-                        <p className="mt-1.5 text-xs text-zinc-400">
-                          {dress.subtitle}
-                        </p>
                       </div>
                     </div>
 
-                    {/* Interactive Size Selector & Add to Bag Footer */}
-                    <div className="px-6 pb-6 pt-3 border-t border-white/[0.06] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] uppercase tracking-wider text-zinc-500">
-                          Size
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {SIZES.map((sz) => (
-                            <button
-                              key={sz}
-                              type="button"
-                              onClick={() =>
-                                setCardSizes((prev) => ({ ...prev, [dress.id]: sz }))
-                              }
-                              className={`w-7 h-7 rounded text-[11px] font-mono transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
-                                selectedSize === sz
-                                  ? 'bg-[#F4F3EF] text-[#0B0B0C] font-semibold'
-                                  : 'bg-white/[0.03] text-zinc-400 hover:text-white border border-white/10'
-                              }`}
-                            >
-                              {sz}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-5 gap-2">
+                    {/* Add to Bag Footer with small square size button and size dropdown menu */}
+                    <div className="px-6 pb-6 pt-3 border-t border-white/[0.06] relative">
+                      <div className="flex items-center gap-2 w-full">
+                        {/* Main Add to Bag Button */}
                         <button
                           type="button"
                           onClick={() => handleQuickAddFromCard(dress)}
-                          className={`col-span-4 py-2.5 px-4 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
+                          className={`flex-1 py-2.5 px-4 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 ${
                             isJustAdded
-                              ? 'bg-emerald-900/80 text-emerald-100 border border-emerald-500/40'
+                              ? 'bg-emerald-900/90 text-emerald-100 border border-emerald-500/50'
                               : 'bg-[#8C2D2D] hover:bg-[#A13535] text-white'
                           }`}
                         >
@@ -762,19 +867,92 @@ export function App() {
                               <span>Added ({selectedSize})</span>
                             </>
                           ) : (
-                            <span>Add to Bag · {selectedSize}</span>
+                            <span>Add to Atelier Bag</span>
                           )}
                         </button>
 
+                        {/* Small Square Size Button */}
                         <button
                           type="button"
-                          onClick={() => setActiveDressModal(dress)}
-                          aria-label={`View specifications for ${dress.name}`}
-                          className="col-span-1 py-2.5 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] border border-white/10 text-xs text-zinc-300 flex items-center justify-center transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenSizeDropdownId((prev) => (prev === dress.id ? null : dress.id));
+                          }}
+                          aria-label={`Select size for ${dress.name}. Current: ${selectedSize}`}
+                          aria-expanded={openSizeDropdownId === dress.id}
+                          className={`w-9 h-9 shrink-0 rounded-lg border text-xs font-sans font-bold flex items-center justify-center gap-0.5 cursor-pointer transition-all ${
+                            openSizeDropdownId === dress.id
+                              ? 'bg-white text-black border-white shadow-xl scale-105'
+                              : 'bg-[#1A1A1E] hover:bg-[#25252B] text-white border-white/20 hover:border-white/40'
+                          }`}
                         >
-                          <Eye className="w-3.5 h-3.5" />
+                          <span className="font-sans">{selectedSize}</span>
+                          <ChevronDown
+                            className={`w-3 h-3 transition-transform duration-200 ${
+                              openSizeDropdownId === dress.id ? 'rotate-180 text-black' : 'text-zinc-400'
+                            }`}
+                          />
                         </button>
                       </div>
+
+                      {/* Floating Size Dropdown Menu Popover */}
+                      <AnimatePresence>
+                        {openSizeDropdownId === dress.id && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                            transition={{ duration: 0.16, ease: 'easeOut' }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute bottom-full right-6 mb-2 w-60 z-50 bg-[#18181C] border border-white/25 rounded-xl p-2 shadow-2xl backdrop-blur-2xl text-left"
+                          >
+                            <div className="flex flex-col gap-1">
+                              {SIZES.map((size) => (
+                                <button
+                                  key={size}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCardSizes((prev) => ({ ...prev, [dress.id]: size }));
+                                    setOpenSizeDropdownId(null);
+                                  }}
+                                  className={`w-full px-3 py-2 text-xs font-sans rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                                    selectedSize === size
+                                      ? 'bg-[#8C2D2D] text-white font-bold shadow-md'
+                                      : 'text-zinc-200 hover:bg-white/15 hover:text-white'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span
+                                      className={`w-6 h-6 rounded flex items-center justify-center font-bold text-[11px] border font-sans ${
+                                        selectedSize === size
+                                          ? 'bg-black/30 border-white/20 text-white'
+                                          : 'bg-black/50 border-white/10 text-zinc-300'
+                                      }`}
+                                    >
+                                      {size}
+                                    </span>
+                                    <span className="font-sans">
+                                      {size === 'XS'
+                                        ? 'Extra Small (XS)'
+                                        : size === 'S'
+                                        ? 'Small (S)'
+                                        : size === 'M'
+                                        ? 'Medium (M)'
+                                        : size === 'L'
+                                        ? 'Large (L)'
+                                        : 'Extra Large (XL)'}
+                                    </span>
+                                  </div>
+                                  {selectedSize === size && (
+                                    <Check className="w-3.5 h-3.5 text-white shrink-0" />
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   </article>
                 );
@@ -783,191 +961,13 @@ export function App() {
           )}
         </section>
 
-        {/* Section 3: Bespoke Sizing Calculator */}
+        {/* Gothic Fashion FAQ Horizontal Scroller Section before Footer */}
         <section
-          id="bespoke-fit"
-          className="scroll-mt-20 border-t border-white/[0.08] bg-[#0E0E11] py-20 md:py-24"
+          id="gothic-faq"
+          aria-label="Gothic Fashion Frequently Asked Questions"
+          className="border-t border-white/[0.08] py-8 overflow-hidden"
         >
-          <div className="max-w-[1280px] mx-auto px-6 md:px-12">
-            <div className="bg-[#131317] border border-white/10 rounded-xl p-8 md:p-12">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-                <div className="lg:col-span-5">
-                  <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider">
-                    <span>02. Precision Corsetry Fit</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Interactive Atelier Measure</span>
-                  </div>
-
-                  <h2 className="font-display text-3xl md:text-4xl font-normal text-[#F4F3EF] mt-2">
-                    Calculate Your Atelier Dress Size
-                  </h2>
-
-                  <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
-                    Our spiral steel-boned bodices and bias-cut silk gowns are graded to natural anatomical measurements. Adjust your waist and bust dimensions to pre-select your fit across the boutique.
-                  </p>
-
-                  <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <span className="text-xs text-zinc-400 block">
-                        Recommended Rust &amp; Raven Size
-                      </span>
-                      <div className="flex items-baseline gap-3 mt-1">
-                        <span className="font-display text-3xl font-semibold text-[#F4F3EF]">
-                          Size {recommendedSize}
-                        </span>
-                        <span className="text-xs text-zinc-400 font-sans tabular-nums">
-                          (Lacing allowance ±4 cm)
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={applyRecommendedSizeToAll}
-                      className="py-3 px-5 rounded-lg bg-[#F4F3EF] text-[#0B0B0C] text-xs font-semibold hover:bg-white transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Apply Size {recommendedSize} to Catalog</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-7 space-y-6 lg:pl-8 lg:border-l lg:border-white/10">
-                  <div>
-                    <div className="flex justify-between text-xs mb-2">
-                      <label htmlFor="waist-range" className="text-zinc-300 font-medium">
-                        Natural Waist Circumference
-                      </label>
-                      <span className="font-mono tabular-nums text-[#F4F3EF]">
-                        {waistCm} cm ({(waistCm / 2.54).toFixed(1)} in)
-                      </span>
-                    </div>
-                    <input
-                      id="waist-range"
-                      type="range"
-                      min={56}
-                      max={94}
-                      value={waistCm}
-                      onChange={(e) => setWaistCm(Number(e.target.value))}
-                      className="w-full accent-[#8C2D2D] cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[11px] font-sans text-zinc-500 mt-1 tabular-nums">
-                      <span>56 cm</span>
-                      <span>75 cm</span>
-                      <span>94 cm</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between text-xs mb-2">
-                      <label htmlFor="bust-range" className="text-zinc-300 font-medium">
-                        Full Bust Circumference
-                      </label>
-                      <span className="font-mono tabular-nums text-[#F4F3EF]">
-                        {bustCm} cm ({(bustCm / 2.54).toFixed(1)} in)
-                      </span>
-                    </div>
-                    <input
-                      id="bust-range"
-                      type="range"
-                      min={76}
-                      max={112}
-                      value={bustCm}
-                      onChange={(e) => setBustCm(Number(e.target.value))}
-                      className="w-full accent-[#8C2D2D] cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[11px] font-sans text-zinc-500 mt-1 tabular-nums">
-                      <span>76 cm</span>
-                      <span>94 cm</span>
-                      <span>112 cm</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 4: Textiles & Material Provenance */}
-        <section
-          id="atelier-craft"
-          className="scroll-mt-20 border-y border-white/[0.08] bg-[#0B0B0C] py-20 md:py-24"
-        >
-          <div className="max-w-[1280px] mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            <SpecularButton
-              as="div"
-              radius={12}
-              tint="#131317"
-              tintOpacity={0.95}
-              proximity={360}
-              className="lg:col-span-7 p-8 md:p-10"
-            >
-              <div>
-                <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider">
-                  <span>03. Material Provenance</span>
-                  <span aria-hidden="true">·</span>
-                  <span>Zero Synthetic Lace Policy</span>
-                </div>
-
-                <h3 className="font-display text-2xl md:text-3xl font-normal text-[#F4F3EF] mt-2">
-                  Engineered for Structure, Movement, and Longevity
-                </h3>
-              </div>
-
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-white/10">
-                <div>
-                  <div className="font-mono text-xl text-[#F4F3EF] tabular-nums">
-                    340 gsm
-                  </div>
-                  <div className="text-xs font-medium text-zinc-200 mt-1">
-                    Silk-Backed Crushed Velvet
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Woven in northern Italy with a dense mulberry silk pile that absorbs ambient light for deep chiaroscuro drape.
-                  </p>
-                </div>
-
-                <div>
-                  <div className="font-mono text-xl text-[#F4F3EF] tabular-nums">
-                    18-Panel
-                  </div>
-                  <div className="text-xs font-medium text-zinc-200 mt-1">
-                    Spiral Steel Corsetry
-                  </div>
-                  <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                    Flexible orthopedic-grade spiral steel boning channels that move with the ribcage without creasing or buckling.
-                  </p>
-                </div>
-              </div>
-            </SpecularButton>
-
-            {/* Claim-to-Proof Adjacent Attributable Testimonial */}
-            <SpecularButton
-              as="div"
-              id="client-archive"
-              radius={12}
-              tint="#131317"
-              tintOpacity={0.95}
-              proximity={360}
-              className="lg:col-span-5 p-8 md:p-10"
-            >
-              <div>
-                <div className="flex items-center gap-2 text-xs text-zinc-400 uppercase tracking-wider mb-3">
-                  <span>Client Dossier</span>
-                  <span aria-hidden="true">·</span>
-                  <span>Verified Atelier Patron</span>
-                </div>
-                <blockquote className="font-display text-xl md:text-2xl italic text-zinc-200 leading-relaxed">
-                  “Before discovering Rust &amp; Raven, every gothic gown I ordered online used stiff polyester lace that tore after two recitals. The Sovereign Velvet Corset Gown held its exact waist structure through a 14-city European cello tour with zero boning distortion.”
-                </blockquote>
-              </div>
-              <div className="mt-6 pt-4 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-                <span className="text-zinc-200 font-medium">
-                  Clara Vonnegut — Principal Cellist, Vienna Chamber Ensemble
-                </span>
-              </div>
-            </SpecularButton>
-          </div>
+          <FaqSection data={GOTHIC_FASHION_FAQ_DATA} />
         </section>
       </main>
 
@@ -1152,17 +1152,6 @@ export function App() {
 
             <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
               <span>© {new Date().getFullYear()} Rust &amp; Raven Atelier S.r.l. All rights reserved.</span>
-              <span aria-hidden="true">·</span>
-              <button
-                type="button"
-                onClick={() => {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                  setIsLoading(true);
-                }}
-                className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
-              >
-                Replay Intro
-              </button>
             </div>
           </div>
         </div>
@@ -1176,23 +1165,7 @@ export function App() {
             : 'bg-[#F6F4EF] border-black/10'
         }`}
       >
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          className={`w-12 h-12 rounded-full aspect-square backdrop-blur-xl inline-flex items-center justify-center border hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer shrink-0 ${
-            theme === 'dark'
-              ? 'bg-white/[0.08] border-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.42),inset_0_-2px_6px_rgba(255,255,255,0.12),0_8px_24px_rgba(0,0,0,0.38)] text-[#F4F3EF] hover:bg-white/[0.15] hover:border-white/40'
-              : 'bg-white/65 border-black/15 shadow-[inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-2px_6px_rgba(18,18,21,0.06),0_8px_24px_rgba(18,18,21,0.12)] text-[#121215] hover:bg-white/85 hover:border-black/25'
-          }`}
-        >
-          {theme === 'dark' ? (
-            <Sun className="w-4 h-4 text-amber-200" />
-          ) : (
-            <Moon className="w-4 h-4 text-zinc-800" />
-          )}
-        </button>
+        <AnimatedThemeToggle theme={theme} onToggle={toggleTheme} />
       </div>
 
       {/* Contiguous Purchase Module (Product Detail Modal) */}
